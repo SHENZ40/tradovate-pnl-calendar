@@ -1,0 +1,477 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>P&L Calendar — Tradovate</title>
+<style>
+  :root {
+    --green: #1D9E75;
+    --red: #D85A30;
+    --blue: #185FA5;
+    --blue-light: #378ADD;
+    --bg: #0d0d0f;
+    --bg2: #141417;
+    --bg3: #1c1c21;
+    --bg4: #232328;
+    --border: rgba(255,255,255,0.07);
+    --border2: rgba(255,255,255,0.13);
+    --text: #f0f0f2;
+    --text2: #9999a8;
+    --text3: #55555f;
+    --radius: 12px;
+    --radius-sm: 8px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html { font-size: 16px; }
+  body { background: var(--bg); color: var(--text); font-family: 'SF Mono', 'Fira Code', 'Consolas', monospace; min-height: 100vh; overscroll-behavior: none; }
+
+  .page { max-width: 1100px; margin: 0 auto; padding: 24px 18px 80px; }
+
+  /* HEADER */
+  .header { display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 24px; gap: 12px; flex-wrap: wrap; }
+  .header-left h1 { font-size: 20px; font-weight: 600; letter-spacing: -0.02em; }
+  .header-left p { font-size: 12px; color: var(--text2); margin-top: 4px; }
+  .demo-btn { font-size: 12px; color: var(--blue-light); background: none; border: 1px solid rgba(55,138,221,0.3); border-radius: 20px; padding: 7px 16px; cursor: pointer; white-space: nowrap; transition: all 0.15s; }
+  .demo-btn:hover { background: rgba(55,138,221,0.1); }
+
+  /* UPLOAD */
+  .upload-zone { border: 1.5px dashed var(--border2); border-radius: var(--radius); padding: 32px 20px; text-align: center; cursor: pointer; transition: all 0.15s; margin-bottom: 24px; background: var(--bg2); }
+  .upload-zone:hover, .upload-zone.drag { border-color: var(--blue-light); background: rgba(55,138,221,0.05); }
+  .upload-icon { font-size: 30px; margin-bottom: 10px; }
+  .upload-zone h3 { font-size: 15px; font-weight: 500; margin-bottom: 5px; }
+  .upload-zone p { font-size: 12px; color: var(--text2); }
+  .upload-zone .hint { font-size: 11px; color: var(--text3); margin-top: 4px; }
+  #fileInput { display: none; }
+
+  /* FILE TAGS */
+  .file-list { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 20px; }
+  .file-tag { font-size: 11px; padding: 4px 10px; border-radius: 20px; background: var(--bg3); border: 1px solid var(--border); color: var(--text2); }
+
+  /* SECTION LABEL */
+  .section-label { font-size: 10px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text3); margin-bottom: 10px; }
+
+  /* ACCOUNT CHIPS */
+  .accounts-row { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 24px; }
+  .acct-chip { padding: 8px 16px; border-radius: 20px; font-size: 12px; font-weight: 500; border: 1px solid var(--border2); cursor: pointer; color: var(--text2); background: var(--bg2); transition: all 0.12s; white-space: nowrap; }
+  .acct-chip.active { background: var(--blue); border-color: var(--blue); color: #fff; }
+
+  /* STATS GRID */
+  .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; margin-bottom: 28px; }
+  .stat-card { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); padding: 14px 16px; }
+  .stat-card .slabel { font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 6px; }
+  .stat-card .sval { font-size: 22px; font-weight: 600; letter-spacing: -0.02em; line-height: 1; }
+  .stat-card .sval.lg { font-size: 26px; }
+  .pos { color: var(--green); } .neg { color: var(--red); } .neu { color: var(--text); }
+
+  /* CALENDAR NAV */
+  .cal-nav { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+  .cal-nav .mlabel { font-size: 18px; font-weight: 600; letter-spacing: -0.02em; }
+  .cal-nav .nav-btns { display: flex; gap: 8px; }
+  .cal-nav button { background: var(--bg2); border: 1px solid var(--border2); border-radius: var(--radius-sm); padding: 8px 16px; font-size: 18px; cursor: pointer; color: var(--text); transition: all 0.12s; }
+  .cal-nav button:active { background: var(--bg3); transform: scale(0.96); }
+
+  /* CALENDAR GRID — DESKTOP */
+  .cal-grid { display: grid; grid-template-columns: repeat(7, 1fr) 80px; gap: 4px; }
+  .dow { font-size: 10px; color: var(--text3); text-align: center; padding: 4px 0 8px; letter-spacing: 0.06em; text-transform: uppercase; }
+  .cal-day { min-height: 90px; border-radius: var(--radius-sm); border: 1px solid var(--border); padding: 8px; background: var(--bg2); cursor: pointer; transition: border-color 0.1s, transform 0.1s; }
+  .cal-day.empty { background: transparent; border-color: transparent; cursor: default; }
+  .cal-day.today { border-color: var(--blue-light); }
+  .cal-day.win-day { background: rgba(29,158,117,0.06); }
+  .cal-day.loss-day { background: rgba(216,90,48,0.06); }
+  .cal-day.has-data:active { transform: scale(0.97); }
+  .dnum { font-size: 11px; color: var(--text3); margin-bottom: 4px; }
+  .dpnl { font-size: 14px; font-weight: 600; letter-spacing: -0.01em; }
+  .dwl { font-size: 10px; margin-top: 3px; }
+  .dwr { font-size: 10px; color: var(--text2); margin-top: 2px; }
+  .dbar { height: 3px; border-radius: 2px; margin-top: 6px; }
+
+  /* WEEK COL */
+  .week-col { min-height: 90px; border-radius: var(--radius-sm); border: 1px solid var(--border2); padding: 8px 10px; background: var(--bg3); display: flex; flex-direction: column; justify-content: center; gap: 3px; }
+  .wk-label { font-size: 9px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--text3); }
+  .wk-pnl { font-size: 13px; font-weight: 600; letter-spacing: -0.01em; }
+  .wk-sub { font-size: 10px; color: var(--text2); }
+
+  /* DAY DETAIL POPUP */
+  .popup-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.7); z-index: 100; align-items: flex-end; justify-content: center; }
+  .popup-overlay.open { display: flex; }
+  .popup { background: var(--bg2); border: 1px solid var(--border2); border-radius: 20px 20px 0 0; padding: 24px 20px 40px; width: 100%; max-width: 500px; animation: slideUp 0.22s ease; }
+  @keyframes slideUp { from { transform: translateY(100%); } to { transform: translateY(0); } }
+  .popup-handle { width: 36px; height: 4px; background: var(--border2); border-radius: 2px; margin: 0 auto 20px; }
+  .popup-date { font-size: 13px; color: var(--text2); margin-bottom: 4px; }
+  .popup-pnl { font-size: 36px; font-weight: 700; letter-spacing: -0.03em; margin-bottom: 20px; }
+  .popup-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
+  .popup-stat { background: var(--bg3); border-radius: var(--radius-sm); padding: 12px 14px; }
+  .popup-stat .plabel { font-size: 10px; color: var(--text3); text-transform: uppercase; letter-spacing: 0.06em; margin-bottom: 5px; }
+  .popup-stat .pval { font-size: 20px; font-weight: 600; letter-spacing: -0.02em; }
+  .popup-contracts { font-size: 12px; color: var(--text2); }
+  .popup-close { width: 100%; margin-top: 16px; padding: 14px; background: var(--bg3); border: 1px solid var(--border2); border-radius: var(--radius-sm); color: var(--text2); font-size: 14px; cursor: pointer; }
+  .popup-close:active { background: var(--bg4); }
+
+  /* MOBILE */
+  @media (max-width: 680px) {
+    .page { padding: 16px 10px 80px; }
+    .header-left h1 { font-size: 17px; }
+    .stats-grid { grid-template-columns: repeat(2, 1fr); gap: 8px; }
+    .stat-card { padding: 12px; }
+    .stat-card .sval { font-size: 20px; }
+    .stat-card .sval.lg { font-size: 23px; }
+
+    .cal-grid { grid-template-columns: repeat(7, 1fr) 46px; gap: 3px; }
+    .dow { font-size: 9px; padding-bottom: 6px; }
+
+    .cal-day { min-height: 58px; padding: 6px 4px; border-radius: 6px; }
+    .dnum { font-size: 9px; margin-bottom: 3px; }
+    .dpnl { font-size: 11px; }
+    .dwl, .dwr { display: none; }
+    .dbar { height: 2px; margin-top: 5px; }
+
+    .week-col { min-height: 58px; padding: 6px 5px; border-radius: 6px; }
+    .wk-label { font-size: 8px; }
+    .wk-pnl { font-size: 11px; }
+    .wk-sub { font-size: 9px; }
+
+    .cal-nav .mlabel { font-size: 16px; }
+    .cal-nav button { padding: 8px 14px; font-size: 16px; }
+    .acct-chip { font-size: 11px; padding: 7px 13px; }
+
+    .popup { border-radius: 16px 16px 0 0; padding: 20px 16px 36px; }
+    .popup-pnl { font-size: 30px; }
+    .popup-stat .pval { font-size: 18px; }
+  }
+
+  @media (max-width: 380px) {
+    .cal-grid { grid-template-columns: repeat(7, 1fr) 38px; gap: 2px; }
+    .cal-day { min-height: 50px; padding: 5px 3px; }
+    .dpnl { font-size: 10px; }
+    .week-col { padding: 5px 3px; }
+    .wk-pnl { font-size: 10px; }
+    .wk-sub { display: none; }
+    .stats-grid { gap: 6px; }
+    .stat-card .sval { font-size: 18px; }
+  }
+
+  ::-webkit-scrollbar { width: 5px; }
+  ::-webkit-scrollbar-track { background: var(--bg); }
+  ::-webkit-scrollbar-thumb { background: var(--bg4); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<div class="page">
+  <div class="header">
+    <div class="header-left">
+      <h1>📈 P&L Calendar</h1>
+      <p>Tradovate · Cash History CSV · net of commissions</p>
+    </div>
+    <button class="demo-btn" onclick="loadDemo()">Load demo</button>
+  </div>
+
+  <div class="upload-zone" id="uploadZone" onclick="document.getElementById('fileInput').click()">
+    <div class="upload-icon">⬆️</div>
+    <h3>Drop Cash History CSVs here</h3>
+    <p>One file per account — upload all at once</p>
+    <p class="hint">Tradovate → Reports → Cash History → Export CSV</p>
+    <input type="file" id="fileInput" accept=".csv" multiple>
+  </div>
+
+  <div id="fileListWrap" style="display:none">
+    <div class="section-label">Loaded files</div>
+    <div class="file-list" id="fileList"></div>
+  </div>
+
+  <div id="mainContent" style="display:none">
+    <div class="section-label">Accounts</div>
+    <div class="accounts-row" id="accountsRow"></div>
+
+    <div class="section-label">Stats — <span id="statsLabel">All accounts</span></div>
+    <div class="stats-grid" id="statsGrid"></div>
+
+    <div class="cal-nav">
+      <span class="mlabel" id="monthLabel"></span>
+      <div class="nav-btns">
+        <button onclick="changeMonth(-1)">‹</button>
+        <button onclick="changeMonth(1)">›</button>
+      </div>
+    </div>
+    <div class="cal-grid" id="calGrid"></div>
+  </div>
+</div>
+
+<!-- DAY DETAIL POPUP -->
+<div class="popup-overlay" id="popupOverlay" onclick="closePopup(event)">
+  <div class="popup" id="popup">
+    <div class="popup-handle"></div>
+    <div class="popup-date" id="popupDate"></div>
+    <div class="popup-pnl" id="popupPnl"></div>
+    <div class="popup-grid" id="popupGrid"></div>
+    <div class="popup-contracts" id="popupContracts"></div>
+    <button class="popup-close" onclick="closePopupDirect()">Close</button>
+  </div>
+</div>
+
+<script>
+let rawRows = [];
+let accounts = [];
+let activeAccounts = new Set();
+let currentYear, currentMonth;
+let byDateCache = {};
+
+function parseCashHistory(text, filename) {
+  const lines = text.trim().split('\n');
+  if (lines.length < 2) return [];
+  const header = lines[0].split(',').map(h => h.trim().replace(/"/g,'').toLowerCase());
+  const ci = k => header.findIndex(h => h.includes(k));
+  const dateIdx = ci('date'), deltaIdx = ci('delta'), contractIdx = ci('contract'), accountIdx = ci('account');
+  const typeIdx = header.findIndex(h => h === 'cash change type' || (h.includes('type') && !h.includes('price') && !h.includes('format')));
+  if (dateIdx < 0 || deltaIdx < 0 || typeIdx < 0) return [];
+  const rows = [];
+  for (let i = 1; i < lines.length; i++) {
+    const cols = []; let inQ = false, cur = '';
+    for (const ch of lines[i]) {
+      if (ch === '"') { inQ = !inQ; continue; }
+      if (ch === ',' && !inQ) { cols.push(cur.trim()); cur = ''; continue; }
+      cur += ch;
+    }
+    cols.push(cur.trim());
+    const type = (cols[typeIdx] || '').trim();
+    const dateRaw = (cols[dateIdx] || '').trim();
+    const deltaRaw = (cols[deltaIdx] || '').replace(/[$,]/g,'').trim();
+    const contract = contractIdx >= 0 ? (cols[contractIdx] || '').trim() : '';
+    const acctRaw = accountIdx >= 0 ? (cols[accountIdx] || '').trim() : '';
+    const delta = parseFloat(deltaRaw);
+    if (isNaN(delta) || !dateRaw) continue;
+    let ds = dateRaw;
+    if (dateRaw.includes('/')) {
+      const p = dateRaw.split('/');
+      if (p.length === 3) { let y=p[2],m=p[0].padStart(2,'0'),d=p[1].padStart(2,'0'); if(y.length===2)y='20'+y; ds=`${y}-${m}-${d}`; }
+    } else if (dateRaw.includes('-')) { ds = dateRaw.substring(0,10); }
+    rows.push({ date: ds, delta, type, contract, account: acctRaw || filename.replace(/\.csv$/i,'') });
+  }
+  return rows;
+}
+
+function getIndividualTrades(rows) {
+  return rows.filter(r => r.type.trim().toLowerCase() === 'trade paired').map(r => ({ ...r, isWin: r.delta > 0 }));
+}
+
+function getDayStats(rows) {
+  const byDate = {};
+  rows.forEach(r => {
+    const t = r.type.trim().toLowerCase();
+    const isPaired = t === 'trade paired', isComm = t === 'commission';
+    if (!isPaired && !isComm) return;
+    if (!byDate[r.date]) byDate[r.date] = { date: r.date, grossPnl: 0, commission: 0, wins: 0, losses: 0, trades: 0, contracts: {} };
+    const d = byDate[r.date];
+    if (isPaired) { d.grossPnl += r.delta; d.trades++; if (r.delta > 0) d.wins++; else d.losses++; }
+    if (isComm) d.commission += r.delta;
+    if (r.contract) d.contracts[r.contract] = (d.contracts[r.contract] || 0) + 1;
+  });
+  return Object.values(byDate).map(d => ({ ...d, netPnl: d.grossPnl + d.commission }));
+}
+
+function getFilteredRows() { return rawRows.filter(r => activeAccounts.has(r.account)); }
+
+function loadFiles(files) {
+  rawRows = []; let pending = files.length; const names = [];
+  files.forEach(f => {
+    names.push(f.name);
+    const reader = new FileReader();
+    reader.onload = ev => { rawRows.push(...parseCashHistory(ev.target.result, f.name)); if (--pending === 0) initState(names); };
+    reader.readAsText(f);
+  });
+}
+
+document.getElementById('fileInput').addEventListener('change', e => { const f = Array.from(e.target.files); if (f.length) loadFiles(f); });
+const uz = document.getElementById('uploadZone');
+uz.addEventListener('dragover', e => { e.preventDefault(); uz.classList.add('drag'); });
+uz.addEventListener('dragleave', () => uz.classList.remove('drag'));
+uz.addEventListener('drop', e => { e.preventDefault(); uz.classList.remove('drag'); const f = Array.from(e.dataTransfer.files).filter(f=>f.name.endsWith('.csv')); if (f.length) loadFiles(f); });
+
+function buildDemoRows() {
+  const now = new Date(); const yr = now.getFullYear(), mo = now.getMonth(); const rows = [];
+  const accts = ['LFF_Account_A','LFF_Account_B','LFF_Account_C','LFF_Account_D'];
+  const contracts = ['GCM6','NQM6','MGCM6'];
+  for (let d = 1; d <= now.getDate(); d++) {
+    const dt = new Date(yr,mo,d); if (dt.getDay()===0||dt.getDay()===6) continue;
+    accts.forEach(acct => {
+      const n = Math.floor(Math.random()*5)+1;
+      for (let t=0;t<n;t++) {
+        const contract = contracts[Math.floor(Math.random()*contracts.length)];
+        const win = Math.random()>0.38;
+        const pnl = win?Math.random()*600+50:-(Math.random()*350+30);
+        const comm = -(Math.random()*3+1.5);
+        const ds = `${yr}-${String(mo+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+        rows.push({date:ds,delta:parseFloat(pnl.toFixed(2)),type:'Trade Paired',contract,account:acct});
+        rows.push({date:ds,delta:parseFloat(comm.toFixed(2)),type:'Commission',contract,account:acct});
+      }
+    });
+  }
+  return rows;
+}
+
+function loadDemo() { rawRows = buildDemoRows(); initState(['demo_a.csv','demo_b.csv','demo_c.csv','demo_d.csv']); }
+
+function initState(names) {
+  accounts = [...new Set(rawRows.map(r=>r.account))].sort();
+  activeAccounts = new Set(accounts);
+  const dates = rawRows.map(r=>new Date(r.date)).filter(d=>!isNaN(d));
+  if (!dates.length) return;
+  const latest = new Date(Math.max(...dates));
+  currentYear = latest.getFullYear(); currentMonth = latest.getMonth();
+  document.getElementById('fileListWrap').style.display = 'block';
+  document.getElementById('fileList').innerHTML = names.map(n=>`<span class="file-tag">📄 ${n}</span>`).join('');
+  document.getElementById('mainContent').style.display = 'block';
+  renderAll();
+}
+
+function renderAll() { renderAccounts(); renderStats(); renderCalendar(); }
+
+function renderAccounts() {
+  const row = document.getElementById('accountsRow'); row.innerHTML = '';
+  const all = document.createElement('div');
+  all.className = 'acct-chip'+(activeAccounts.size===accounts.length?' active':'');
+  all.textContent = 'All accounts';
+  all.onclick = () => { activeAccounts = new Set(accounts); renderAll(); };
+  row.appendChild(all);
+  accounts.forEach(a => {
+    const chip = document.createElement('div');
+    chip.className = 'acct-chip'+(activeAccounts.has(a)?' active':'');
+    chip.textContent = a.replace(/cash_history_\d*/i,'').replace(/_/g,' ').trim()||a;
+    chip.onclick = () => { if(activeAccounts.has(a)){if(activeAccounts.size>1)activeAccounts.delete(a);}else activeAccounts.add(a); renderAll(); };
+    row.appendChild(chip);
+  });
+}
+
+function renderStats() {
+  const filtered = getFilteredRows();
+  const trades = getIndividualTrades(filtered);
+  const dayStats = getDayStats(filtered);
+  document.getElementById('statsLabel').textContent = activeAccounts.size===accounts.length?'All accounts':[...activeAccounts].map(a=>a.replace(/cash_history_\d*/i,'').replace(/_/g,' ').trim()).join(', ');
+  if (!trades.length) { document.getElementById('statsGrid').innerHTML=''; return; }
+  const totalNet=dayStats.reduce((a,d)=>a+d.netPnl,0);
+  const totalGross=dayStats.reduce((a,d)=>a+d.grossPnl,0);
+  const totalComm=dayStats.reduce((a,d)=>a+d.commission,0);
+  const wins=trades.filter(t=>t.isWin), losses=trades.filter(t=>!t.isWin);
+  const wr=trades.length?wins.length/trades.length*100:0;
+  const avgWin=wins.length?wins.reduce((a,t)=>a+t.delta,0)/wins.length:0;
+  const avgLoss=losses.length?Math.abs(losses.reduce((a,t)=>a+t.delta,0)/losses.length):0;
+  const gw=wins.reduce((a,t)=>a+t.delta,0), gl=Math.abs(losses.reduce((a,t)=>a+t.delta,0));
+  const pf=gl>0?gw/gl:gw>0?999:0;
+  const exp=(wr/100*avgWin)-((1-wr/100)*avgLoss);
+  let maxW=0,maxL=0,cW=0,cL=0;
+  trades.forEach(t=>{ if(t.isWin){cW++;cL=0;if(cW>maxW)maxW=cW;}else{cL++;cW=0;if(cL>maxL)maxL=cL;} });
+  const stats=[
+    {l:'Net P&L',v:(totalNet>=0?'+':'')+'$'+Math.abs(totalNet).toFixed(0),c:totalNet>=0?'pos':'neg',big:true},
+    {l:'Gross P&L',v:(totalGross>=0?'+':'')+'$'+Math.abs(totalGross).toFixed(0),c:totalGross>=0?'pos':'neg'},
+    {l:'Commissions',v:'-$'+Math.abs(totalComm).toFixed(0),c:'neg'},
+    {l:'Win Rate',v:wr.toFixed(1)+'%',c:wr>=50?'pos':'neg',big:true},
+    {l:'Profit Factor',v:pf>99?'∞':pf.toFixed(2),c:pf>=1?'pos':'neg'},
+    {l:'Expectancy',v:(exp>=0?'+':'')+'$'+exp.toFixed(0),c:exp>=0?'pos':'neg'},
+    {l:'Avg Win',v:'+$'+avgWin.toFixed(0),c:'pos'},
+    {l:'Avg Loss',v:'-$'+avgLoss.toFixed(0),c:'neg'},
+    {l:'Win Streak',v:maxW,c:'pos'},
+    {l:'Loss Streak',v:maxL,c:'neg'},
+    {l:'Total Trades',v:trades.length,c:'neu'},
+    {l:'Trading Days',v:dayStats.length,c:'neu'},
+  ];
+  document.getElementById('statsGrid').innerHTML=stats.map(s=>`<div class="stat-card"><div class="slabel">${s.l}</div><div class="sval ${s.c}${s.big?' lg':''}">${s.v}</div></div>`).join('');
+}
+
+function renderCalendar() {
+  const filtered = getFilteredRows();
+  const dayStats = getDayStats(filtered);
+  byDateCache = {};
+  dayStats.forEach(d => { byDateCache[d.date] = d; });
+  const allNets = dayStats.map(d=>d.netPnl);
+  const maxAbs = allNets.length?Math.max(...allNets.map(Math.abs),1):1;
+  const yr=currentYear, mo=currentMonth;
+  const mNames=['January','February','March','April','May','June','July','August','September','October','November','December'];
+  document.getElementById('monthLabel').textContent=`${mNames[mo]} ${yr}`;
+  const grid=document.getElementById('calGrid'); grid.innerHTML='';
+  ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].forEach(d=>{const el=document.createElement('div');el.className='dow';el.textContent=d;grid.appendChild(el);});
+  const wh=document.createElement('div');wh.className='dow';wh.textContent='Wk';grid.appendChild(wh);
+  const first=new Date(yr,mo,1),last=new Date(yr,mo+1,0);
+  let startDow=first.getDay(); startDow=startDow===0?6:startDow-1;
+  const now=new Date();
+  const todayStr=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}`;
+  const allDays=[];
+  for(let i=0;i<startDow;i++) allDays.push(null);
+  for(let d=1;d<=last.getDate();d++) allDays.push(d);
+  let wk=1,idx=0;
+  while(idx<allDays.length){
+    const week=allDays.slice(idx,idx+7);
+    let wPnl=0,wWins=0,wLosses=0,wDays=0;
+    week.forEach(d=>{
+      if(!d) return;
+      const ds=`${yr}-${String(mo+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+      const data=byDateCache[ds];
+      if(data){wPnl+=data.netPnl;wWins+=data.wins;wLosses+=data.losses;wDays++;}
+    });
+    for(let i=0;i<7;i++){
+      const d=week[i]!==undefined?week[i]:null;
+      const cell=document.createElement('div');
+      if(!d){cell.className='cal-day empty';}
+      else{
+        const ds=`${yr}-${String(mo+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
+        const data=byDateCache[ds];
+        const isToday=ds===todayStr;
+        let cls='cal-day';
+        if(isToday)cls+=' today';
+        if(data){cls+=' has-data';cls+=data.netPnl>=0?' win-day':' loss-day';}
+        cell.className=cls;
+        if(data){
+          const pnlCls=data.netPnl>=0?'pos':'neg';
+          const barW=Math.round(Math.abs(data.netPnl)/maxAbs*100);
+          cell.innerHTML=`<div class="dnum">${d}</div>
+            <div class="dpnl ${pnlCls}">${data.netPnl>=0?'+':''} $${Math.abs(data.netPnl).toFixed(0)}</div>
+            <div class="dwl"><span style="color:var(--green)">${data.wins}W</span> <span style="color:var(--red)">${data.losses}L</span></div>
+            <div class="dwr">${data.wins+data.losses>0?Math.round(data.wins/(data.wins+data.losses)*100):0}% WR</div>
+            <div class="dbar" style="width:${barW}%;background:${data.netPnl>=0?'var(--green)':'var(--red)'}"></div>`;
+          cell.addEventListener('click', () => openPopup(ds, data));
+        } else {
+          cell.innerHTML=`<div class="dnum">${d}</div>`;
+        }
+      }
+      grid.appendChild(cell);
+    }
+    const ws=document.createElement('div');ws.className='week-col';
+    const wCls=wPnl>=0?'pos':'neg';
+    ws.innerHTML=wDays>0
+      ?`<div class="wk-label">Wk ${wk}</div><div class="wk-pnl ${wCls}">${wPnl>=0?'+':''} $${Math.abs(wPnl).toFixed(0)}</div><div class="wk-sub"><span style="color:var(--green)">${wWins}W</span> <span style="color:var(--red)">${wLosses}L</span></div>`
+      :`<div class="wk-label">Wk ${wk}</div>`;
+    grid.appendChild(ws);
+    wk++;idx+=7;
+  }
+}
+
+function openPopup(ds, data) {
+  const months=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+  const parts=ds.split('-');
+  const dateLabel=`${months[parseInt(parts[1])-1]} ${parseInt(parts[2])}, ${parts[0]}`;
+  const pnlCls=data.netPnl>=0?'pos':'neg';
+  const wr=data.wins+data.losses>0?Math.round(data.wins/(data.wins+data.losses)*100):0;
+  document.getElementById('popupDate').textContent=dateLabel;
+  document.getElementById('popupPnl').className='popup-pnl '+pnlCls;
+  document.getElementById('popupPnl').textContent=(data.netPnl>=0?'+ ':'') + '$'+Math.abs(data.netPnl).toFixed(2);
+  const contracts=Object.keys(data.contracts||{}).join(', ')||'';
+  document.getElementById('popupGrid').innerHTML=`
+    <div class="popup-stat"><div class="plabel">Wins</div><div class="pval pos">${data.wins}</div></div>
+    <div class="popup-stat"><div class="plabel">Losses</div><div class="pval neg">${data.losses}</div></div>
+    <div class="popup-stat"><div class="plabel">Win Rate</div><div class="pval ${wr>=50?'pos':'neg'}">${wr}%</div></div>
+    <div class="popup-stat"><div class="plabel">Total Trades</div><div class="pval neu">${data.trades}</div></div>
+    <div class="popup-stat"><div class="plabel">Gross P&L</div><div class="pval ${data.grossPnl>=0?'pos':'neg'}">${data.grossPnl>=0?'+':''} $${Math.abs(data.grossPnl).toFixed(2)}</div></div>
+    <div class="popup-stat"><div class="plabel">Commissions</div><div class="pval neg">-$${Math.abs(data.commission).toFixed(2)}</div></div>
+  `;
+  document.getElementById('popupContracts').textContent=contracts?'Instruments: '+contracts:'';
+  document.getElementById('popupOverlay').classList.add('open');
+  document.body.style.overflow='hidden';
+}
+
+function closePopup(e) { if(e.target===document.getElementById('popupOverlay')) closePopupDirect(); }
+function closePopupDirect() { document.getElementById('popupOverlay').classList.remove('open'); document.body.style.overflow=''; }
+
+function changeMonth(d){currentMonth+=d;if(currentMonth>11){currentMonth=0;currentYear++;}if(currentMonth<0){currentMonth=11;currentYear--;}renderCalendar();}
+</script>
+</body>
+</html>
